@@ -29,9 +29,9 @@ struct Point {
 template <typename Func>
 void expandUniverse(std::vector<Point> &galaxies, 
     std::vector<Point> &buffer,
-    Func &&dir, int64_t expansionFactor=2)
+    Func &&dir, int64_t expansion)
 {
-    expansionFactor -= 1;  // subtract original line that is being expanded
+    expansion -= 1;  // subtract original line that is being expanded
     
     int64_t corr = dir(galaxies[0]);
     dir(buffer[0]) += corr;
@@ -39,14 +39,14 @@ void expandUniverse(std::vector<Point> &galaxies,
         const int64_t diff = dir(galaxies[i]) - dir(galaxies[i-1]);
         if (diff >= 2) {
             // Expansion occurred
-            corr += (diff - 1) * expansionFactor;
+            corr += (diff - 1) * expansion;
         }
         // Update y position of next galaxy to account for vertical expansion
         dir(buffer[i]) += corr;
     }
 }
 
-void part1()
+void part1(int64_t expansion=2)
 {
     int64_t ans = 0;
     
@@ -78,7 +78,8 @@ void part1()
     // - Vertical direction (y-axis)
     std::vector<Point> buffer(galaxies);
     
-    expandUniverse(galaxies, buffer, [](Point &p) -> int64_t &{ return p.y; });
+    expandUniverse(galaxies, buffer, 
+        [](Point &p) -> int64_t &{ return p.y; }, expansion);
     
     // - Horizontal direction (x-axis)
     // Sort w.r.t. x-component first
@@ -86,7 +87,8 @@ void part1()
         [](const Point &a, const Point &b) { return a.x < b.x; });
     std::copy(buffer.begin(), buffer.end(), galaxies.begin());
     
-    expandUniverse(galaxies, buffer, [](Point &p) -> int64_t &{ return p.x; });
+    expandUniverse(galaxies, buffer, 
+        [](Point &p) -> int64_t &{ return p.x; }, expansion);
     
     // Swap pointers with buffer
     std::swap(galaxies, buffer);
@@ -102,57 +104,8 @@ void part1()
 
 void part2()
 {
-    int64_t ans = 0;
     const int64_t expansion = 1e6;  // expansion factor
-    
-    const std::string filename("input.txt");
-    std::ifstream file(filename);
-    if (!file) {
-        throw std::runtime_error("Failed to open file: " + filename);
-    }
-    
-    int64_t x = 0, y = 0;
-    char c;
-    std::vector<Point> galaxies;
-    while (file.get(c)) {
-        if (c == '#') {
-            galaxies.push_back({.x = x, .y = y});
-        }
-        if (c != '\n') {
-            ++x;
-        } else {
-            // Move on to next line
-            ++y;
-            x = 0;
-        }
-    }
-    file.close();
-    
-    assert(galaxies.size() >= 2);
-    // Account for expansion of universe
-    // - Vertical direction (y-axis)
-    std::vector<Point> buffer(galaxies);
-    
-    expandUniverse(galaxies, buffer, [](Point &p) -> int64_t &{ return p.y; }, expansion);
-    
-    // - Horizontal direction (x-axis)
-    // Sort w.r.t. x-component first
-    std::sort(buffer.begin(), buffer.end(), 
-        [](const Point &a, const Point &b) { return a.x < b.x; });
-    std::copy(buffer.begin(), buffer.end(), galaxies.begin());
-    
-    expandUniverse(galaxies, buffer, [](Point &p) -> int64_t &{ return p.x; }, expansion);
-    
-    // Swap pointers with buffer
-    std::swap(galaxies, buffer);
-    // Compute sum of shortest distances between pairs of galaxies using
-    // taxicab metric
-    for (size_t i = 0; i < galaxies.size(); ++i) {
-        for (size_t j = i + 1; j < galaxies.size(); ++j) {
-            ans += galaxies[i].distance(galaxies[j]);
-        }
-    }
-    std::cout << "Answer: " << ans << '\n';
+    part1(expansion);
 }
 
 int main(int argc, char **argv)
