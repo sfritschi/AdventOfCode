@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include <numeric>
+#include <functional>
 
 #include <cassert>
 #include <cstdio>
@@ -24,10 +25,26 @@ struct Point {
     }
 };
 
-struct Correction {
-    int64_t x;
-    int64_t offset;
-};
+// Note: Cannot make galaxies const without using separate functor for it
+template <typename Func>
+void expandUniverse(std::vector<Point> &galaxies, 
+    std::vector<Point> &buffer,
+    Func &&dir, int64_t expansionFactor=2)
+{
+    expansionFactor -= 1;  // subtract original line that is being expanded
+    
+    int64_t corr = dir(galaxies[0]);
+    dir(buffer[0]) += corr;
+    for (size_t i = 1; i < galaxies.size(); ++i) {
+        const int64_t diff = dir(galaxies[i]) - dir(galaxies[i-1]);
+        if (diff >= 2) {
+            // Expansion occurred
+            corr += (diff - 1) * expansionFactor;
+        }
+        // Update y position of next galaxy to account for vertical expansion
+        dir(buffer[i]) += corr;
+    }
+}
 
 void part1()
 {
@@ -61,46 +78,15 @@ void part1()
     // - Vertical direction (y-axis)
     std::vector<Point> buffer(galaxies);
     
-    int64_t yCorr = galaxies[0].y;
-    buffer[0].y += yCorr;
-    for (size_t i = 1; i < galaxies.size(); ++i) {
-        const int64_t dy = galaxies[i].y - galaxies[i-1].y;
-        if (dy >= 2) {
-            // Expansion occurred
-            yCorr += dy - 1;
-        }
-        // Update y position of next galaxy to account for vertical expansion
-        buffer[i].y += yCorr;
-    }
+    expandUniverse(galaxies, buffer, [](Point &p) -> int64_t &{ return p.y; });
     
     // - Horizontal direction (x-axis)
-    std::set<int64_t> cols;  // Compare == std::less<int64_t> -> sorted in ascending order
-    // Compute all (unique) column indices
-    for (const auto &galaxy : galaxies) { cols.insert(galaxy.x); }
+    // Sort w.r.t. x-component first
+    std::sort(buffer.begin(), buffer.end(), 
+        [](const Point &a, const Point &b) { return a.x < b.x; });
+    std::copy(buffer.begin(), buffer.end(), galaxies.begin());
     
-    std::vector<Correction> xCorrs;
-    
-    int64_t xCorr = *cols.begin();
-    if (xCorr > 0) { xCorrs.push_back({.x = 0, .offset = xCorr}); }
-    
-    for (auto current = cols.begin(), next = std::next(cols.begin());
-        next != cols.end(); ++current, ++next)
-    {
-        const int64_t dx = *next - *current;
-        if (dx >= 2) {
-            xCorr += dx - 1;
-            xCorrs.push_back({.x = *current + 1, .offset = xCorr});
-        }
-    }
-    
-    for (auto &galaxy : buffer) {
-        size_t i = 0;
-        while (i < xCorrs.size() && galaxy.x > xCorrs[i].x) { ++i; }
-        
-        if (i > 0) {
-            galaxy.x += xCorrs[i-1].offset;
-        }
-    }
+    expandUniverse(galaxies, buffer, [](Point &p) -> int64_t &{ return p.x; });
     
     // Swap pointers with buffer
     std::swap(galaxies, buffer);
@@ -117,7 +103,7 @@ void part1()
 void part2()
 {
     int64_t ans = 0;
-    const int64_t expansion = 1e6 - 1;  // expansion factor
+    const int64_t expansion = 1e6;  // expansion factor
     
     const std::string filename("input.txt");
     std::ifstream file(filename);
@@ -147,46 +133,15 @@ void part2()
     // - Vertical direction (y-axis)
     std::vector<Point> buffer(galaxies);
     
-    int64_t yCorr = galaxies[0].y * expansion;
-    buffer[0].y += yCorr;
-    for (size_t i = 1; i < galaxies.size(); ++i) {
-        const int64_t dy = galaxies[i].y - galaxies[i-1].y;
-        if (dy >= 2) {
-            // Expansion occurred
-            yCorr += (dy - 1) * expansion;
-        }
-        // Update y position of next galaxy to account for vertical expansion
-        buffer[i].y += yCorr;
-    }
+    expandUniverse(galaxies, buffer, [](Point &p) -> int64_t &{ return p.y; }, expansion);
     
     // - Horizontal direction (x-axis)
-    std::set<int64_t> cols;  // Compare == std::less<int64_t> -> sorted in ascending order
-    // Compute all (unique) column indices
-    for (const auto &galaxy : galaxies) { cols.insert(galaxy.x); }
+    // Sort w.r.t. x-component first
+    std::sort(buffer.begin(), buffer.end(), 
+        [](const Point &a, const Point &b) { return a.x < b.x; });
+    std::copy(buffer.begin(), buffer.end(), galaxies.begin());
     
-    std::vector<Correction> xCorrs;
-    
-    int64_t xCorr = *cols.begin() * expansion;
-    if (xCorr > 0) { xCorrs.push_back({.x = 0, .offset = xCorr}); }
-    
-    for (auto current = cols.begin(), next = std::next(cols.begin());
-        next != cols.end(); ++current, ++next)
-    {
-        const int64_t dx = *next - *current;
-        if (dx >= 2) {
-            xCorr += (dx - 1) * expansion;
-            xCorrs.push_back({.x = *current + 1, .offset = xCorr});
-        }
-    }
-    
-    for (auto &galaxy : buffer) {
-        size_t i = 0;
-        while (i < xCorrs.size() && galaxy.x > xCorrs[i].x) { ++i; }
-        
-        if (i > 0) {
-            galaxy.x += xCorrs[i-1].offset;
-        }
-    }
+    expandUniverse(galaxies, buffer, [](Point &p) -> int64_t &{ return p.x; }, expansion);
     
     // Swap pointers with buffer
     std::swap(galaxies, buffer);
