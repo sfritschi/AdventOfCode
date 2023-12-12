@@ -34,8 +34,8 @@ void expandUniverse(std::vector<Point> &galaxies, Func &&dir, int64_t expansion)
     int64_t corr = dir(galaxies[0]);
     dir(galaxies[0]) += corr;
     for (size_t i = 1; i < galaxies.size(); ++i) {
-        // Add correction from previous iteration to cancel out 
-        const int64_t diff = dir(galaxies[i]) - dir(galaxies[i-1]) + corr;
+        // Subtract correction from previous iteration to cancel out 
+        const int64_t diff = dir(galaxies[i]) - (dir(galaxies[i-1]) - corr);
         if (diff >= 2) {
             // Expansion occurred
             corr += (diff - 1) * expansion;
