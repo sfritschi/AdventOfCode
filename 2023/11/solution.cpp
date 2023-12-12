@@ -27,22 +27,21 @@ struct Point {
 
 // Note: Cannot make galaxies const without using separate functor for it
 template <typename Func>
-void expandUniverse(std::vector<Point> &galaxies, 
-    std::vector<Point> &buffer,
-    Func &&dir, int64_t expansion)
+void expandUniverse(std::vector<Point> &galaxies, Func &&dir, int64_t expansion)
 {
     expansion -= 1;  // subtract original line that is being expanded
     
     int64_t corr = dir(galaxies[0]);
-    dir(buffer[0]) += corr;
+    dir(galaxies[0]) += corr;
     for (size_t i = 1; i < galaxies.size(); ++i) {
-        const int64_t diff = dir(galaxies[i]) - dir(galaxies[i-1]);
+        // Add correction from previous iteration to cancel out 
+        const int64_t diff = dir(galaxies[i]) - dir(galaxies[i-1]) + corr;
         if (diff >= 2) {
             // Expansion occurred
             corr += (diff - 1) * expansion;
         }
         // Update y position of next galaxy to account for vertical expansion
-        dir(buffer[i]) += corr;
+        dir(galaxies[i]) += corr;
     }
 }
 
@@ -75,23 +74,16 @@ void part1(int64_t expansion=2)
     
     assert(galaxies.size() >= 2);
     // Account for expansion of universe
-    // - Vertical direction (y-axis)
-    std::vector<Point> buffer(galaxies);
-    
-    expandUniverse(galaxies, buffer, 
-        [](Point &p) -> int64_t &{ return p.y; }, expansion);
+    // - Vertical direction (y-axis)    
+    expandUniverse(galaxies, [](Point &p) -> int64_t &{ return p.y; }, expansion);
     
     // - Horizontal direction (x-axis)
     // Sort w.r.t. x-component first
-    std::sort(buffer.begin(), buffer.end(), 
+    std::sort(galaxies.begin(), galaxies.end(), 
         [](const Point &a, const Point &b) { return a.x < b.x; });
-    std::copy(buffer.begin(), buffer.end(), galaxies.begin());
     
-    expandUniverse(galaxies, buffer, 
-        [](Point &p) -> int64_t &{ return p.x; }, expansion);
+    expandUniverse(galaxies, [](Point &p) -> int64_t &{ return p.x; }, expansion);
     
-    // Swap pointers with buffer
-    std::swap(galaxies, buffer);
     // Compute sum of shortest distances between pairs of galaxies using
     // taxicab metric
     for (size_t i = 0; i < galaxies.size(); ++i) {
